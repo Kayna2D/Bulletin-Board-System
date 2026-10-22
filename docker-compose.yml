@@ -1,0 +1,29 @@
+services:
+  broker:
+    build: ./broker
+
+  server-a:
+    build: ./server
+    environment: { SERVER_NAME: server-a }
+    volumes: [ "./data/server-a:/data" ]
+    depends_on: [ broker ]
+
+  server-b:
+    build: ./server
+    environment: { SERVER_NAME: server-b }
+    volumes: [ "./data/server-b:/data" ]
+    depends_on: [ broker ]
+
+  client-ana:
+    build: ./client
+    environment:
+      BOT_NAME: ana
+      WANTED_CHANNELS: geral,java
+    depends_on: [ broker ]
+
+  client-bob:
+    build: ./client
+    environment:
+      BOT_NAME: bob
+      WANTED_CHANNELS: geral,python
+    depends_on: [ broker ]
