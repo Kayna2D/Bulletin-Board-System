@@ -1,21 +1,27 @@
 services:
-  broker:          # REQ/REP (clientes <-> servidores)
+  broker: # REQ/REP (clientes <-> servidores)
     build: ./broker
 
-  proxy:           # PUB/SUB (XSUB 5557 / XPUB 5558)
+  proxy: # PUB/SUB (XSUB 5557 / XPUB 5558)
     build: ./proxy
+
+  reference: # rank, lista de servidores, heartbeat e hora correta (REP 5559)
+    build: ./reference
+    environment: { HEARTBEAT_TIMEOUT: "30" }
 
   server-a:
     build: ./server
     environment: { SERVER_NAME: server-a }
     volumes: [ "./data/server-a:/data" ]
-    depends_on: [ broker, proxy ]
+    depends_on: [ broker, proxy, reference ]
 
   server-b:
     build: ./server
-    environment: { SERVER_NAME: server-b }
+    environment: 
+      SERVER_NAME: server-B
+      CLOCK_SKEW_MS: "2000" 
     volumes: [ "./data/server-b:/data" ]
-    depends_on: [ broker, proxy ]
+    depends_on: [ broker, proxy, reference ]
 
   client-ana:
     build: ./client

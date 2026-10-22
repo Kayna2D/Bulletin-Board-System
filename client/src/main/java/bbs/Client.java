@@ -22,6 +22,22 @@ public class Client {
     static final int MIN_CHANNELS = 5, MIN_SUBSCRIPTIONS = 3, MSGS_PER_ROUND = 10;
     static final Random RND = new Random();
 
+    /** Relógio lógico (Lamport). Acessado pela thread principal e pela thread do SUB. */
+    static final class LogicalClock {
+        private long value = 0;
+        synchronized long tick() { return ++value; } // antes de enviar
+        synchronized long get() { return value; }
+        synchronized long update(long received) { // ao receber
+            value = Math.max(value, received);
+            return value;
+        }
+    }
+    static final LogicalClock CLOCK = new LogicalClock();
+
+    static void observe(Map<String, Object> msg) {
+        if (msg.get("clock") instanceof Number n) CLOCK.update(n.longValue());
+    }
+
     static final ZContext ctx = new ZContext();       // REQ (thread principal)
     static ZMQ.Socket sock;
 
@@ -52,6 +68,7 @@ public class Client {
         Map<String, Object> req = new LinkedHashMap<>();
         req.put("type", type);
         req.put("timestamp", System.currentTimeMillis());
+        req.put("clock", CLOCK.tick());
         req.put("user", USER);
         req.putAll(extra);
         log(">> ENVIADO", req);
@@ -63,6 +80,7 @@ public class Client {
             return null;
         }
         Map<String, Object> rep = MAPPER.readValue(raw, new TypeReference<>() {});
+        observe(rep);
         log("<< RECEBIDO", rep);
         return rep;
     }
@@ -98,10 +116,12 @@ public class Client {
                     // inscrição ZeroMQ é por prefixo; aqui exigimos canal exato
                     if (payload == null || !SUBSCRIBED.contains(channel)) continue;
                     Map<String, Object> msg = MAPPER.readValue(payload, new TypeReference<>() {});
+                    observe(msg);
                     Instant sent = Instant.ofEpochMilli(((Number) msg.get("timestamp")).longValue());
                     System.out.printf(
-                        "[%s] [%s] << MENSAGEM canal=%s autor=%s enviada_em=%s recebida_em=%s texto=\"%s\"%n",
-                        received, USER, channel, msg.get("user"), sent, received, msg.get("message"));
+                        "[%s] [%s] << MENSAGEM canal=%s autor=%s enviada_em=%s recebida_em=%s clock_msg=%s clock_local=%s texto=\"%s\"%n",
+                        received, USER, channel, msg.get("user"), sent, received,
+                        msg.get("clock"), CLOCK.get(), msg.get("message"));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
