@@ -1,29 +1,28 @@
 services:
-  broker:
+  broker:          # REQ/REP (clientes <-> servidores)
     build: ./broker
+
+  proxy:           # PUB/SUB (XSUB 5557 / XPUB 5558)
+    build: ./proxy
 
   server-a:
     build: ./server
     environment: { SERVER_NAME: server-a }
     volumes: [ "./data/server-a:/data" ]
-    depends_on: [ broker ]
+    depends_on: [ broker, proxy ]
 
   server-b:
     build: ./server
     environment: { SERVER_NAME: server-b }
     volumes: [ "./data/server-b:/data" ]
-    depends_on: [ broker ]
+    depends_on: [ broker, proxy ]
 
   client-ana:
     build: ./client
-    environment:
-      BOT_NAME: ana
-      WANTED_CHANNELS: geral,java
-    depends_on: [ broker ]
+    environment: { BOT_NAME: ana }
+    depends_on: [ broker, proxy ]
 
   client-bob:
     build: ./client
-    environment:
-      BOT_NAME: bob
-      WANTED_CHANNELS: geral,python
-    depends_on: [ broker ]
+    environment: { BOT_NAME: bob }
+    depends_on: [ broker, proxy ]
