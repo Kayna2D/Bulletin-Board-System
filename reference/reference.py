@@ -8,8 +8,9 @@ BIND = os.environ.get("REFERENCE_BIND", "tcp://*:5559")
 TIMEOUT = float(os.environ.get("HEARTBEAT_TIMEOUT", "30"))  # segundos sem heartbeat -> removido
 NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
-ranks = {}    # nome -> rank (nunca reaproveitado; mesmo nome => mesmo rank)
-alive = {}    # nome -> último sinal de vida (monotonic)
+ranks = {} # nome -> rank (nunca reaproveitado; mesmo nome => mesmo rank)
+adresses = {} # nome -> endereço ZeroMQ do servidor (para comunicação entre servidores)
+alive = {} # nome -> último sinal de vida (monotonic)
 next_rank = 1
 
 
@@ -52,8 +53,10 @@ def purge():
         log("REMOVIDO", {"name": name, "rank": ranks[name], "motivo": "sem heartbeat"})
 
 
-def register(name):
+def register(name, address=None):
     global next_rank
+    if isinstance(address, str) and 0 < len(address) <= 200:
+        adresses[name] = address
     if name not in ranks:
         ranks[name] = next_rank
         next_rank += 1
@@ -62,14 +65,14 @@ def register(name):
 
 
 def server_list():
-    return [{"name": n, "rank": ranks[n]} for n in sorted(alive, key=ranks.get)]
+    return [{"name": n, "rank": ranks[n], "address": adresses.get(n)} for n in sorted(alive, key=ranks.get)]
 
 
 def do_rank(req):
     name = req.get("name")
     if not isinstance(name, str) or not NAME_RE.match(name):
         return error("rank_reply", "invalid_name", "nome inválido")
-    return reply("rank_reply", rank=register(name))
+    return reply("rank_reply", rank=register(name, req.get("address")))
 
 
 def do_list(req):
@@ -81,7 +84,7 @@ def do_heartbeat(req):
     name = req.get("name")
     if not isinstance(name, str) or not NAME_RE.match(name):
         return error("heartbeat_reply", "invalid_name", "nome inválido")
-    return reply("heartbeat_reply", rank=register(name))  # volta à lista se tinha sido removido
+    return reply("heartbeat_reply", rank=register(name, req.get("address")))  # volta à lista se tinha sido removido
 
 
 HANDLERS = {"rank": do_rank, "list": do_list, "heartbeat": do_heartbeat}
