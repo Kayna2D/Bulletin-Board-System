@@ -57,7 +57,7 @@ def now_f():
     return raw_now_ms() + offset_ms
 
 def now_ms():
-    return int(raw_now_ms() + offset_ms)
+    return int(now_f())
 
 def adjust_to_coordinator(coord_time, t0, t1):
     """Hora do coordenador (já média de Berkeley) + RTT/2 de compensação"""
@@ -163,6 +163,24 @@ def refresh_peers():
         peers = {s["name"]: s for s in lst["servers"]}
         log("SERVIDORES DISPONÍVEIS", lst["servers"])
 
+
+def sync_channels():
+    """Servidor tardio (ou que perdeu um _sync): puxa os canais dos outros servidores e faz o merge."""
+    added = []
+    for name, p in list(peers.items()):
+        if name == NAME or not p.get("address"):
+            continue
+        resp = peer_request(p["address"], "channels_sync", 500)
+        if not peer_ok(resp) or not isinstance(resp.get("channels"), list):
+            continue
+        for ch in resp["channels"]:
+            if valid_channel(ch) and ch not in db["channels"]:
+                db["channels"].append(ch)
+                added.append(ch)
+    if added:
+        save(db)
+        log("CANAIS SINCRONIZADOS", {"novos": added, "total": len(db["channels"])})
+
 def heartbeat():
     global rank
     resp = ask_reference("heartbeat", address=PEER_ADDRESS)
@@ -170,6 +188,7 @@ def heartbeat():
         rank = resp["rank"]
         log("RANK ATUALIZADO", {"rank": rank})
     refresh_peers()
+    sync_channels() # garante que nenhum canal ficou para trás
 
 # comunicação entre servidores (REQ/REP) 
 def peer_request(address, rtype, timeout_ms=1000, **extra):
@@ -236,6 +255,8 @@ def handle_peer(raw):
         if isinstance(sender_rank, int) and sender_rank < rank:
             election_requested.set() # Bully: o de rank maior assume a eleição
         return reply("election_reply", message="OK")
+    if rtype == "channels_sync": # outro servidor pedindo meus canais
+        return reply("channels_sync_reply", channels=list(db["channels"]))
     if rtype == "time_poll": # coordenador perguntando a minha hora
         return reply("time_poll_reply", time=now_ms())
     if rtype == "clock": # servidor pedindo a hora correta
@@ -424,6 +445,8 @@ def main():
     time.sleep(1) # dá tempo das conexões PUB/SUB se estabelecerem (slow joiner)
     connect_reference()
     register()
+    refresh_peers()
+    sync_channels() # entra conhecendo os canais existentes
     log("INICIADO", {"rank": rank, "canais": db["channels"]})
     run_election()
     poller = zmq.Poller()

@@ -9,7 +9,7 @@ TIMEOUT = float(os.environ.get("HEARTBEAT_TIMEOUT", "30"))  # segundos sem heart
 NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
 ranks = {} # nome -> rank (nunca reaproveitado; mesmo nome => mesmo rank)
-adresses = {} # nome -> endereço ZeroMQ do servidor (para comunicação entre servidores)
+addresses = {} # nome -> endereço ZeroMQ do servidor (para comunicação entre servidores)
 alive = {} # nome -> último sinal de vida (monotonic)
 next_rank = 1
 
@@ -56,7 +56,7 @@ def purge():
 def register(name, address=None):
     global next_rank
     if isinstance(address, str) and 0 < len(address) <= 200:
-        adresses[name] = address
+        addresses[name] = address
     if name not in ranks:
         ranks[name] = next_rank
         next_rank += 1
@@ -65,7 +65,7 @@ def register(name, address=None):
 
 
 def server_list():
-    return [{"name": n, "rank": ranks[n], "address": adresses.get(n)} for n in sorted(alive, key=ranks.get)]
+    return [{"name": n, "rank": ranks[n], "address": addresses.get(n)} for n in sorted(alive, key=ranks.get)]
 
 
 def do_rank(req):
