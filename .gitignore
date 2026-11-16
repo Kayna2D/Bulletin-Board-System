@@ -1,1 +1,6 @@
 data/
+_pycache__/
+logs/
+tools/
+*.log 
+

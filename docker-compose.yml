@@ -5,10 +5,12 @@ services:
   proxy: # PUB/SUB (XSUB 5557 / XPUB 5558)
     build: ./proxy
 
-  reference: # rank, lista de servidores e heartbeat (REP 5559)
+  reference: # rank, lista de servidores, endereços e heartbeat (REP 5559)
     build: ./reference
     environment: { HEARTBEAT_TIMEOUT: "30" }
 
+  # Servidores: REP entre servidores na 5560 (eleição e relógio)
+  # CLOCK_SKEW_MS: simula relógios físicos errados para demonstrar o Berkeley ("0" para desligar)
   server-a:
     build: ./server
     environment: { SERVER_NAME: server-a, CLOCK_SKEW_MS: "0" }
