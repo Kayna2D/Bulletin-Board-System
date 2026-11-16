@@ -13,7 +13,7 @@ Servidores, serviço de referência, broker e proxy em **Python**; clientes (bot
 | `proxy` | Python | proxy Pub/Sub: XSUB ⇄ XPUB | 5557 / 5558 |
 | `reference` | Python | rank, endereços, lista de servidores e heartbeat | 5559 |
 | `server-a/b/c` | Python | login, canais, publicações, relógios, eleição, replicação | REP entre servidores 5560 |
-| `client-alice/bob` | Java | bots | — |
+| `client-ana/bob` | Java | bots | — |
 
 Mensagens são serializadas em **MessagePack** (binário) e todas têm `timestamp` (ms) e `clock` (relógio lógico de Lamport do remetente).
 Tópicos Pub/Sub: nome do canal (publicações), `servers` (anúncio do coordenador) e `replica` (replicação). Os dois últimos são reservados e não podem ser usados como nome de canal.
